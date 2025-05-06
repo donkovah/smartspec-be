@@ -1,0 +1,20 @@
+app:
+  cors:
+    origin: '*'
+
+openai:
+  model: 'gpt-4'
+  temperature: 0.7
+  maxTokens: 2000
+
+qdrant:
+  url: 'http://localhost:6333'
+
+metrics:
+  enabled: true
+  defaultLabels:
+    env: 'development'
+
+logging:
+  level: 'debug'
+  pretty: true

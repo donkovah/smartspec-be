@@ -1,0 +1,32 @@
+app:
+  name: 'smartspec'
+  port: 3000
+  cors:
+    origin: '*'
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+
+openai:
+  model: 'gpt-4'
+  temperature: 0.7
+  maxTokens: 2000
+  timeout: 30000
+
+qdrant:
+  url: 'http://qdrant:6333'
+  collections:
+    initiatives: 'initiatives'
+    tasks: 'tasks'
+  dimensions: 1536
+  distance: 'Cosine'
+
+metrics:
+  enabled: true
+  prefix: 'smartspec_'
+  defaultLabels:
+    app: 'smartspec'
+    env: 'development'
+
+logging:
+  level: 'debug'
+  format: 'json'
+  pretty: true

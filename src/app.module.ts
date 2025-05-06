@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { InitiativesModule } from './modules/initiatives/initiatives.module';
-import { TasksModule } from './modules/tasks/tasks.module';
-import { VectorModule } from './modules/vector/vector.module';
+import { InitiativesModule } from './initiatives/initiatives.module';
+import { MetricsModule } from './common/metrics.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -12,8 +11,7 @@ import configuration from './config/configuration';
       load: [configuration],
     }),
     InitiativesModule,
-    TasksModule,
-    VectorModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}

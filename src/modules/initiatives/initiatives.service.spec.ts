@@ -2,34 +2,37 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { InitiativesService } from './initiatives.service';
 import { VectorService } from '../vector/vector.service';
-import { OpenAI } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
+import { AIMessageChunk } from '@langchain/core/messages';
 import { JiraTask } from './initiatives.schema';
+import { jest } from '@jest/globals';
 
-jest.mock('@langchain/openai', () => ({
-  OpenAI: jest.fn().mockImplementation(() => ({
-    invoke: jest.fn(),
-  })),
-}));
+// Mock the ConfigService
+const mockConfigService = {
+  get: jest.fn((key: string) => {
+    const config = {
+      'openai.apiKey': 'test-api-key',
+      'qdrant.url': 'http://localhost:6333',
+      'qdrant.apiKey': 'test-qdrant-key',
+    };
+    return config[key as keyof typeof config];
+  }),
+};
 
-jest.mock('../vector/vector.service');
+// Mock the VectorService
+const mockVectorService = {
+  storeVector: jest.fn(),
+};
 
 describe('InitiativesService', () => {
   let service: InitiativesService;
-  let vectorService: VectorService;
-  let mockOpenAI: jest.Mocked<OpenAI>;
-
-  const mockConfigService = {
-    get: jest.fn((key: string) => {
-      const config = {
-        'openai.apiKey': 'test-api-key',
-        'qdrant.url': 'http://localhost:6333',
-        'qdrant.apiKey': 'test-qdrant-key',
-      };
-      return config[key];
-    }),
-  };
+  let mockOpenAI: jest.Mocked<ChatOpenAI>;
 
   beforeEach(async () => {
+    mockOpenAI = {
+      invoke: jest.fn(),
+    } as unknown as jest.Mocked<ChatOpenAI>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InitiativesService,
@@ -37,14 +40,15 @@ describe('InitiativesService', () => {
           provide: ConfigService,
           useValue: mockConfigService,
         },
-        VectorService,
+        {
+          provide: VectorService,
+          useValue: mockVectorService,
+        },
       ],
     }).compile();
 
     service = module.get<InitiativesService>(InitiativesService);
-    vectorService = module.get<VectorService>(VectorService);
-    mockOpenAI = new (OpenAI as any)();
-    service.setOpenAI(mockOpenAI);
+    service.setOpenAI(mockOpenAI as unknown as ChatOpenAI);
   });
 
   it('should be defined', () => {
@@ -78,10 +82,15 @@ describe('InitiativesService', () => {
 
     it('should successfully convert initiative to tasks', async () => {
       // Mock OpenAI response
-      mockOpenAI.invoke.mockResolvedValue(JSON.stringify(mockTasks));
+      const mockResponse = new AIMessageChunk({
+        content: JSON.stringify(mockTasks),
+      });
+      mockOpenAI.invoke.mockResolvedValueOnce(mockResponse);
 
       // Mock vector service
-      jest.spyOn(vectorService, 'storeVector').mockResolvedValue({ status: 'completed' });
+      jest
+        .spyOn(mockVectorService, 'storeVector')
+        .mockResolvedValue({ status: 'completed' });
 
       const result = await service.convertInitiativeToTasks(mockInitiative);
 
@@ -89,23 +98,23 @@ describe('InitiativesService', () => {
       expect(result.metadata).toHaveProperty('initiative', mockInitiative);
       expect(result.metadata.totalTasks).toBe(2); // Main task + 1 subtask
       expect(result.metadata.totalStoryPoints).toBe(8); // 5 + 3 story points
-      expect(vectorService.storeVector).toHaveBeenCalled();
+      expect(mockVectorService.storeVector).toHaveBeenCalled();
     });
 
     it('should handle OpenAI errors gracefully', async () => {
       mockOpenAI.invoke.mockRejectedValue(new Error('OpenAI API error'));
 
-      await expect(service.convertInitiativeToTasks(mockInitiative)).rejects.toThrow(
-        'Failed to convert initiative to tasks',
-      );
+      await expect(
+        service.convertInitiativeToTasks(mockInitiative),
+      ).rejects.toThrow('Failed to convert initiative to tasks');
     });
 
     it('should handle invalid task structure', async () => {
       mockOpenAI.invoke.mockResolvedValue('Invalid JSON response');
 
-      await expect(service.convertInitiativeToTasks(mockInitiative)).rejects.toThrow(
-        'Failed to convert initiative to tasks',
-      );
+      await expect(
+        service.convertInitiativeToTasks(mockInitiative),
+      ).rejects.toThrow('Failed to convert initiative to tasks');
     });
   });
-}); 
+});
