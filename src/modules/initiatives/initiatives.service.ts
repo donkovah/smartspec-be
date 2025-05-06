@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatOpenAI } from '@langchain/openai';
 import { VectorService } from '../vector/vector.service';
@@ -322,5 +322,45 @@ Similarity Score: ${result.score.toFixed(2)}`;
       removed,
       modified
     };
+  }
+
+  private async updateTasks(processId: string, tasks: JiraTask[]): Promise<void> {
+    const process = await this.repository.findOne({ where: { id: processId } });
+    if (!process) {
+      throw new NotFoundException(`Process with ID ${processId} not found`);
+    }
+
+    process.tasks = tasks;
+    await this.repository.save(process);
+  }
+
+  private async generateTasks(processId: string): Promise<JiraTask[]> {
+    const process = await this.repository.findOne({ where: { id: processId } });
+    if (!process) {
+      throw new NotFoundException(`Process with ID ${processId} not found`);
+    }
+
+    const tasks = await this.dataLoader.generateTasks(process.description);
+    return tasks;
+  }
+
+  private async suggestTasks(processId: string): Promise<JiraTask[]> {
+    const process = await this.repository.findOne({ where: { id: processId } });
+    if (!process) {
+      throw new NotFoundException(`Process with ID ${processId} not found`);
+    }
+
+    const tasks = await this.dataLoader.suggestTasks(process.description);
+    return tasks;
+  }
+
+  private async generateFinalTasks(processId: string): Promise<JiraTask[]> {
+    const process = await this.repository.findOne({ where: { id: processId } });
+    if (!process) {
+      throw new NotFoundException(`Process with ID ${processId} not found`);
+    }
+
+    const tasks = await this.dataLoader.generateFinalTasks(process.description);
+    return tasks;
   }
 }

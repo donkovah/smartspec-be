@@ -50,53 +50,26 @@ const sampleInitiatives: InitiativeData[] = [
   },
 ];
 
-async function bootstrap() {
+async function loadSampleData() {
   const app = await NestFactory.createApplicationContext(AppModule);
-  const dataLoader = app.get(DataLoader);
   const initiativesService = app.get(InitiativesService);
 
   try {
-    await dataLoader.loadInitiatives(sampleInitiatives);
-    console.log('Successfully loaded sample initiatives');
+    for (const initiative of sampleInitiatives) {
+      const process = await initiativesService.createProcess(initiative);
+      console.log(`Created process for initiative: ${initiative.title}`);
 
-    // 1. Create a new initiative process
-    const process = await initiativesService.createInitiativeProcess(
-      "Build Authentication System",
-      "Implement OAuth2 with social login"
-    );
-    
-    // 2. Review and update tasks
-    const updatedProcess = await initiativesService.updateInitiativeTasks(
-      process.id,
-      modifiedTasks
-    );
-    
-    // 3. Finalize and upload to JIRA
-    const finalProcess = await initiativesService.finalizeAndUploadToJira(
-      process.id,
-      finalTasks
-    );
-
-    // Update process with suggested tasks
-    const suggestedTasks = await initiativesService.suggestTasks(process.id);
-    await initiativesService.updateProcess(process.id, {
-      tasks: suggestedTasks as JiraTask[]
-    });
-
-    // Update process with final tasks
-    const finalTasks = await initiativesService.generateFinalTasks(process.id);
-    await initiativesService.updateProcess(process.id, {
-      tasks: finalTasks as JiraTask[]
-    });
+      // Update process with tasks
+      const tasks = await initiativesService.generateTasks(process.id);
+      await initiativesService.updateProcess(process.id, { tasks });
+      console.log(`Updated process with ${tasks.length} tasks`);
+    }
   } catch (error) {
     console.error('Error loading sample data:', error);
+    process.exit(1);
   } finally {
     await app.close();
   }
 }
 
-// Add void operator to explicitly mark the promise as intentionally not awaited
-void bootstrap().catch((error) => {
-  console.error('Error loading sample data:', error);
-  process.exit(1);
-});
+void loadSampleData();

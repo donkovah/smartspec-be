@@ -4,6 +4,10 @@ import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { InitiativesService } from './initiatives.service';
 import { MetricsService } from '../metrics/metrics.service';
 
+interface AnalyticsResult {
+  [key: string]: number;
+}
+
 @ApiTags('initiatives-analytics')
 @Controller('initiatives/analytics')
 export class InitiativesAnalyticsController {
@@ -38,35 +42,35 @@ export class InitiativesAnalyticsController {
   }
 
   @Get('status')
-  async getStatusAnalytics() {
+  async getStatusAnalytics(): Promise<AnalyticsResult> {
     const analytics = await this.analyticsService.getStatusAnalytics();
     this.metricsService.observeInitiativeStatus(analytics);
     return analytics;
   }
 
   @Get('revisions')
-  async getRevisionAnalytics() {
+  async getRevisionAnalytics(): Promise<AnalyticsResult> {
     const analytics = await this.analyticsService.getRevisionAnalytics();
     this.metricsService.observeInitiativeRevisions(analytics);
     return analytics;
   }
 
   @Get('tasks')
-  async getTaskAnalytics() {
+  async getTaskAnalytics(): Promise<AnalyticsResult> {
     const analytics = await this.analyticsService.getTaskAnalytics();
     this.metricsService.observeInitiativeTasks(analytics);
     return analytics;
   }
 
   @Get('processes')
-  async getProcessAnalytics() {
+  async getProcessAnalytics(): Promise<AnalyticsResult> {
     const analytics = await this.analyticsService.getProcessAnalytics();
     this.metricsService.observeInitiativeProcesses(analytics);
     return analytics;
   }
 
   @Get('trends')
-  async getTrendAnalytics(@Query('days') days: number = 30) {
+  async getTrendAnalytics(@Query('days') days: number = 30): Promise<AnalyticsResult> {
     const analytics = await this.analyticsService.getTrendAnalytics(days);
     this.metricsService.observeInitiativeTrends(analytics);
     return analytics;
