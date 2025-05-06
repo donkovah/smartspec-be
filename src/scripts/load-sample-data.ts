@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { DataLoader } from '../modules/vector/data-loader';
 import { InitiativeData } from '../modules/vector/data-loader';
+import { InitiativesService } from '../modules/initiatives/initiatives.service';
+import { JiraTask } from '../modules/jira/jira.service';
 
 const sampleInitiatives: InitiativeData[] = [
   {
@@ -51,10 +53,41 @@ const sampleInitiatives: InitiativeData[] = [
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const dataLoader = app.get(DataLoader);
+  const initiativesService = app.get(InitiativesService);
 
   try {
     await dataLoader.loadInitiatives(sampleInitiatives);
     console.log('Successfully loaded sample initiatives');
+
+    // 1. Create a new initiative process
+    const process = await initiativesService.createInitiativeProcess(
+      "Build Authentication System",
+      "Implement OAuth2 with social login"
+    );
+    
+    // 2. Review and update tasks
+    const updatedProcess = await initiativesService.updateInitiativeTasks(
+      process.id,
+      modifiedTasks
+    );
+    
+    // 3. Finalize and upload to JIRA
+    const finalProcess = await initiativesService.finalizeAndUploadToJira(
+      process.id,
+      finalTasks
+    );
+
+    // Update process with suggested tasks
+    const suggestedTasks = await initiativesService.suggestTasks(process.id);
+    await initiativesService.updateProcess(process.id, {
+      tasks: suggestedTasks as JiraTask[]
+    });
+
+    // Update process with final tasks
+    const finalTasks = await initiativesService.generateFinalTasks(process.id);
+    await initiativesService.updateProcess(process.id, {
+      tasks: finalTasks as JiraTask[]
+    });
   } catch (error) {
     console.error('Error loading sample data:', error);
   } finally {

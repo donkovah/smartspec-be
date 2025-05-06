@@ -4,32 +4,32 @@ npm-debug.log
 yarn-debug.log
 yarn-error.log
 
-# Environment
-.env
-.env.*
-
-# Git
-.git
-.gitignore
-
-# IDE
-.idea
-.vscode
-
 # Build output
 dist
 build
+
+# Environment variables
+.env
+.env.*
+
+# Version control
+.git
+.gitignore
+
+# IDE files
+.idea
+.vscode
+*.swp
+*.swo
+
+# Test coverage
+coverage
 
 # Docker
 Dockerfile
 docker-compose.yml
 .dockerignore
 
-# Tests
-coverage
-.nyc_output
-*.spec.ts
-
 # Misc
-*.md
-.DS_Store 
+.DS_Store
+*.log 

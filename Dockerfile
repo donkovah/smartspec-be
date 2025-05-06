@@ -1,21 +1,21 @@
-FROM node:20-slim
+# Use Node.js LTS version
+FROM node:20-alpine
 
-WORKDIR /app
+# Create app directory
+WORKDIR /usr/src/app
 
-# Copy package files
+# Install app dependencies
 COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
-# Install dependencies
-RUN yarn install
-
-# Copy source code
+# Copy app source
 COPY . .
 
 # Build the application
 RUN yarn build
 
-# Expose the port
+# Expose the port the app runs on
 EXPOSE 3000
 
-# Start the application
+# Command to run the application
 CMD ["yarn", "start:prod"] 

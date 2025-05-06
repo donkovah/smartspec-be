@@ -1,37 +1,84 @@
 version: '3.8'
 
 services:
-  qdrant:
-    image: qdrant/qdrant
+  app:
+    build: .
     ports:
-      - '6333:6333' # REST API port
-      - '6334:6334' # gRPC port
-    volumes:
-      - qdrant_data:/qdrant/storage
+      - "3000:3000"
     environment:
-      - QDRANT_ALLOW_CORS=true
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:6333/healthz']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - '3000:3000'
-    environment:
-      - NODE_ENV=development
-      - QDRANT_URL=http://qdrant:6333
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=smartspec
+      - DB_POOL_MAX=20
+      - DB_POOL_MIN=4
+      - DB_POOL_IDLE_TIMEOUT=30000
+      - DB_POOL_CONNECTION_TIMEOUT=2000
     depends_on:
-      qdrant:
+      postgres:
         condition: service_healthy
     volumes:
-      - .:/app
-      - /app/node_modules
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - smartspec-network
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=smartspec
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartspec-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - smartspec-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - smartspec-network
 
 volumes:
-  qdrant_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  smartspec-network:
+    driver: bridge

@@ -8,11 +8,23 @@ import { z } from 'zod';
 import { JiraTask, JiraTaskSchema } from './initiatives.schema';
 import { HumanMessage } from '@langchain/core/messages';
 import { DataLoader } from '../vector/data-loader';
+import { v4 as uuidv4 } from 'uuid';
+import { InitiativesRepository } from './initiatives.repository';
+import { InitiativeProcess } from './entities/initiative-process.entity';
+import { InitiativeRevision } from './entities/initiative-revision.entity';
+import { InitiativeStatus } from './entities/initiative-process.entity';
+import { RevisionType } from './entities/initiative-revision.entity';
 
 interface TaskMetadata {
   initiative: string;
   totalTasks: number;
   totalStoryPoints: number;
+}
+
+interface TaskComparison {
+  added: JiraTask[];
+  removed: JiraTask[];
+  modified: JiraTask[];
 }
 
 @Injectable()
@@ -24,6 +36,7 @@ export class InitiativesService {
     private readonly configService: ConfigService,
     private readonly vectorService: VectorService,
     private readonly dataLoader: DataLoader,
+    private readonly repository: InitiativesRepository,
   ) {
     this.openai = new ChatOpenAI({
       openAIApiKey: this.configService.get<string>('openai.apiKey'),
@@ -40,7 +53,127 @@ export class InitiativesService {
     this.openai = openai;
   }
 
-  async convertInitiativeToTasks(
+  async createInitiativeProcess(
+    title: string,
+    description: string,
+    jiraProjectKey?: string,
+  ): Promise<InitiativeProcess> {
+    const now = new Date();
+    const process = new InitiativeProcess();
+    process.id = uuidv4();
+    process.title = title;
+    process.description = description;
+    process.status = InitiativeStatus.Draft;
+    process.created_at = now;
+    process.updated_at = now;
+    process.jiraProjectKey = jiraProjectKey;
+    process.revisions = [];
+
+    // Generate initial task suggestions
+    const suggestedTasks = await this.generateTaskSuggestions(title + '\n' + description);
+    
+    // Create the first revision with the suggestions
+    const initialRevision = new InitiativeRevision();
+    initialRevision.id = uuidv4();
+    initialRevision.timestamp = now;
+    initialRevision.type = RevisionType.Suggestion;
+    initialRevision.tasks = suggestedTasks.tasks;
+    initialRevision.metadata = {
+      totalTasks: suggestedTasks.metadata.totalTasks,
+      totalStoryPoints: suggestedTasks.metadata.totalStoryPoints,
+    };
+    initialRevision.process = process;
+
+    process.revisions.push(initialRevision);
+    process.status = InitiativeStatus.Reviewing;
+
+    // Store the process
+    await this.storeInitiativeProcess(process);
+
+    return process;
+  }
+
+  async updateInitiativeTasks(
+    processId: string,
+    tasks: JiraTask[],
+  ): Promise<InitiativeProcess> {
+    // Retrieve the current process
+    const process = await this.getInitiativeProcess(processId);
+    if (!process) {
+      throw new Error('Initiative process not found');
+    }
+
+    const now = new Date();
+    const lastRevision = process.revisions[process.revisions.length - 1];
+
+    // Create a new revision for user edits
+    const newRevision = new InitiativeRevision();
+    newRevision.id = uuidv4();
+    newRevision.timestamp = now;
+    newRevision.type = RevisionType.UserEdit;
+    newRevision.tasks = tasks;
+    newRevision.metadata = {
+      totalTasks: this.countTotalTasks(tasks),
+      totalStoryPoints: this.calculateTotalStoryPoints(tasks),
+      editDistance: this.calculateEditDistance(lastRevision.tasks, tasks),
+    };
+    newRevision.process = process;
+
+    process.revisions.push(newRevision);
+    process.updated_at = now;
+
+    // Store the updated process
+    await this.storeInitiativeProcess(process);
+
+    return process;
+  }
+
+  async finalizeAndUploadToJira(
+    processId: string,
+    tasks: JiraTask[],
+  ): Promise<InitiativeProcess> {
+    const process = await this.getInitiativeProcess(processId);
+    if (!process) {
+      throw new Error('Initiative process not found');
+    }
+
+    const now = new Date();
+    const initialSuggestion = process.revisions[0];
+
+    // Create final revision
+    const finalRevision = new InitiativeRevision();
+    finalRevision.id = uuidv4();
+    finalRevision.timestamp = now;
+    finalRevision.type = RevisionType.Final;
+    finalRevision.tasks = tasks;
+    finalRevision.metadata = {
+      totalTasks: this.countTotalTasks(tasks),
+      totalStoryPoints: this.calculateTotalStoryPoints(tasks),
+      accuracy: this.calculateAccuracy(initialSuggestion.tasks, tasks),
+      editDistance: this.calculateEditDistance(
+        process.revisions[process.revisions.length - 1].tasks,
+        tasks,
+      ),
+    };
+    finalRevision.process = process;
+
+    process.revisions.push(finalRevision);
+    process.status = InitiativeStatus.Approved;
+    process.updated_at = now;
+
+    // Store the final version
+    await this.storeInitiativeProcess(process);
+
+    // TODO: Implement JIRA upload
+    // const jiraEpicLink = await this.uploadToJira(process.jiraProjectKey, tasks);
+    // process.jiraEpicLink = jiraEpicLink;
+    // process.status = InitiativeStatus.Uploaded;
+    // await this.storeInitiativeProcess(process);
+
+    return process;
+  }
+
+  private async generateTaskSuggestions(
     initiative: string,
   ): Promise<{ tasks: JiraTask[]; metadata: TaskMetadata }> {
     try {
@@ -106,9 +239,6 @@ Similarity Score: ${result.score.toFixed(2)}`;
           : JSON.stringify(response.content);
       const tasks = await this.taskParser.parse(content);
 
-      // Store the initiative and tasks in vector store for future reference
-      await this.storeInitiativeAndTasks(initiative, tasks);
-
       return {
         tasks,
         metadata: {
@@ -123,16 +253,30 @@ Similarity Score: ${result.score.toFixed(2)}`;
     }
   }
 
-  private async storeInitiativeAndTasks(
-    initiative: string,
-    tasks: JiraTask[],
-  ): Promise<void> {
-    // Store the initiative and tasks in the vector store
+  private async storeInitiativeProcess(process: InitiativeProcess): Promise<void> {
+    // Store in repository
+    await this.repository.save(process);
+
+    // Store in vector database for similarity search
     await this.vectorService.storeVector('initiatives', {
-      initiative,
-      tasks,
-      timestamp: new Date().toISOString(),
+      id: process.id,
+      title: process.title,
+      description: process.description,
+      tasks: process.revisions[process.revisions.length - 1].tasks,
+      timestamp: process.updated_at,
     });
+  }
+
+  private async getInitiativeProcess(id: string): Promise<InitiativeProcess | null> {
+    return this.repository.findById(id);
+  }
+
+  async getAllInitiatives(): Promise<InitiativeProcess[]> {
+    return this.repository.findAll();
+  }
+
+  async getInitiativesByStatus(status: InitiativeStatus): Promise<InitiativeProcess[]> {
+    return this.repository.findByStatus(status);
   }
 
   private countTotalTasks(tasks: JiraTask[]): number {
@@ -151,5 +295,32 @@ Similarity Score: ${result.score.toFixed(2)}`;
         : 0;
       return total + task.storyPoints + subtaskPoints;
     }, 0);
+  }
+
+  private calculateEditDistance(originalTasks: JiraTask[], newTasks: JiraTask[]): number {
+    // TODO: Implement a proper edit distance calculation
+    // This should consider changes in task properties and structure
+    return 0;
+  }
+
+  private calculateAccuracy(suggestedTasks: JiraTask[], finalTasks: JiraTask[]): number {
+    // TODO: Implement a proper accuracy calculation
+    // This should consider how close the initial suggestion was to the final version
+    return 0;
+  }
+
+  private compareTasks(originalTasks: JiraTask[], newTasks: JiraTask[]): TaskComparison {
+    const added = newTasks.filter(task => !originalTasks.some(ot => ot.id === task.id));
+    const removed = originalTasks.filter(task => !newTasks.some(nt => nt.id === task.id));
+    const modified = newTasks.filter(task => {
+      const originalTask = originalTasks.find(ot => ot.id === task.id);
+      return originalTask && JSON.stringify(originalTask) !== JSON.stringify(task);
+    });
+
+    return {
+      added,
+      removed,
+      modified
+    };
   }
 }
