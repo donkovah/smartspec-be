@@ -1,16 +1,22 @@
-import { ConfigService } from '@nestjs/config';
-import { OpenAI } from '@langchain/openai';
-import { VectorService } from '../vector/vector.service';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { InitiativesService } from './initiatives.service';
+import { VectorService } from '../vector/vector.service';
+import { OpenAI } from '@langchain/openai';
+import { JiraTask } from './initiatives.schema';
 
-jest.mock('@langchain/openai');
+jest.mock('@langchain/openai', () => ({
+  OpenAI: jest.fn().mockImplementation(() => ({
+    invoke: jest.fn(),
+  })),
+}));
+
 jest.mock('../vector/vector.service');
 
 describe('InitiativesService', () => {
   let service: InitiativesService;
   let vectorService: VectorService;
-  let openai: jest.Mocked<OpenAI>;
+  let mockOpenAI: jest.Mocked<OpenAI>;
 
   const mockConfigService = {
     get: jest.fn((key: string) => {
@@ -37,7 +43,8 @@ describe('InitiativesService', () => {
 
     service = module.get<InitiativesService>(InitiativesService);
     vectorService = module.get<VectorService>(VectorService);
-    openai = new OpenAI() as jest.Mocked<OpenAI>;
+    mockOpenAI = new (OpenAI as any)();
+    service.setOpenAI(mockOpenAI);
   });
 
   it('should be defined', () => {
@@ -46,7 +53,7 @@ describe('InitiativesService', () => {
 
   describe('convertInitiativeToTasks', () => {
     const mockInitiative = 'Implement user authentication system';
-    const mockTasks = [
+    const mockTasks: JiraTask[] = [
       {
         summary: 'Set up OAuth2.0 authentication',
         description: 'Implement OAuth2.0 authentication flow',
@@ -71,8 +78,7 @@ describe('InitiativesService', () => {
 
     it('should successfully convert initiative to tasks', async () => {
       // Mock OpenAI response
-      const mockResponse = JSON.stringify(mockTasks);
-      openai.invoke.mockResolvedValue(mockResponse);
+      mockOpenAI.invoke.mockResolvedValue(JSON.stringify(mockTasks));
 
       // Mock vector service
       jest.spyOn(vectorService, 'storeVector').mockResolvedValue({ status: 'completed' });
@@ -81,13 +87,13 @@ describe('InitiativesService', () => {
 
       expect(result.tasks).toEqual(mockTasks);
       expect(result.metadata).toHaveProperty('initiative', mockInitiative);
-      expect(result.metadata).toHaveProperty('totalTasks');
-      expect(result.metadata).toHaveProperty('totalStoryPoints');
+      expect(result.metadata.totalTasks).toBe(2); // Main task + 1 subtask
+      expect(result.metadata.totalStoryPoints).toBe(8); // 5 + 3 story points
       expect(vectorService.storeVector).toHaveBeenCalled();
     });
 
     it('should handle OpenAI errors gracefully', async () => {
-      openai.invoke.mockRejectedValue(new Error('OpenAI API error'));
+      mockOpenAI.invoke.mockRejectedValue(new Error('OpenAI API error'));
 
       await expect(service.convertInitiativeToTasks(mockInitiative)).rejects.toThrow(
         'Failed to convert initiative to tasks',
@@ -95,23 +101,11 @@ describe('InitiativesService', () => {
     });
 
     it('should handle invalid task structure', async () => {
-      const invalidResponse = 'Invalid JSON response';
-      openai.invoke.mockResolvedValue(invalidResponse);
+      mockOpenAI.invoke.mockResolvedValue('Invalid JSON response');
 
       await expect(service.convertInitiativeToTasks(mockInitiative)).rejects.toThrow(
         'Failed to convert initiative to tasks',
       );
-    });
-
-    it('should calculate total tasks and story points correctly', async () => {
-      const mockResponse = JSON.stringify(mockTasks);
-      openai.invoke.mockResolvedValue(mockResponse);
-      jest.spyOn(vectorService, 'storeVector').mockResolvedValue({ status: 'completed' });
-
-      const result = await service.convertInitiativeToTasks(mockInitiative);
-
-      expect(result.metadata.totalTasks).toBe(2); // Main task + 1 subtask
-      expect(result.metadata.totalStoryPoints).toBe(8); // 5 + 3 story points
     });
   });
 }); 

@@ -25,6 +25,10 @@ export class InitiativesService {
     this.taskParser = StructuredOutputParser.fromZodSchema(z.array(JiraTaskSchema));
   }
 
+  setOpenAI(openai: OpenAI) {
+    this.openai = openai;
+  }
+
   async convertInitiativeToTasks(initiative: string) {
     try {
       // Create a prompt template for task conversion
