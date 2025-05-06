@@ -21,119 +21,201 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-# SmartSpec - Initiative to JIRA Task Converter
+# Smartspec Backend
 
-A NestJS-based RAG (Retrieval-Augmented Generation) application that converts project/company initiatives into structured JIRA tasks using LangChain, OpenAI, and Qdrant.
+A powerful backend service for managing initiatives, tasks, and analytics with AI-powered task generation and monitoring capabilities.
 
 ## Features
 
-- Convert project initiatives into structured JIRA tasks
-- Intelligent task breakdown and estimation
-- Vector-based storage and retrieval using Qdrant
-- OpenAI-powered natural language understanding
-- RESTful API endpoints for task management
+- **Initiative Management**
+  - Create and manage initiatives with detailed tracking
+  - AI-powered task generation and suggestions
+  - Revision history and change tracking
+  - Status management and workflow automation
 
-## Tech Stack
+- **Analytics & Monitoring**
+  - Real-time metrics collection with Prometheus
+  - Comprehensive dashboards with Grafana
+  - Custom metrics for:
+    - HTTP request rates and durations
+    - Database connection status
+    - Initiative process metrics
+    - Task generation performance
+    - Revision tracking
 
-- **Backend Framework**: NestJS
-- **AI/ML**: LangChain + OpenAI
-- **Vector Database**: Qdrant
-- **Language**: TypeScript
+- **Database & Storage**
+  - PostgreSQL for persistent storage
+  - TypeORM for database management
+  - Automated migrations
+  - Vector storage for similarity search
+
+- **AI Integration**
+  - OpenAI integration for task generation
+  - Vector similarity search
+  - Smart task suggestions
+  - Historical context analysis
 
 ## Prerequisites
 
 - Node.js (v18 or higher)
-- Yarn package manager
+- PostgreSQL (v14 or higher)
+- Docker and Docker Compose (for containerized deployment)
 - OpenAI API key
-- Qdrant instance (local or cloud)
 
-## Environment Setup
+## Environment Variables
 
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-OPENAI_API_KEY=your_openai_api_key
-QDRANT_URL=your_qdrant_url
-QDRANT_API_KEY=your_qdrant_api_key
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=smartspec
+
+# Connection Pool Configuration
+DB_POOL_MAX=20
+DB_POOL_MIN=4
+DB_POOL_IDLE_TIMEOUT=30000
+DB_POOL_CONNECTION_TIMEOUT=2000
+
+# OpenAI Configuration
+OPENAI_API_KEY=your-api-key-here
+
+# Environment
+NODE_ENV=development
 ```
 
 ## Installation
 
+1. Clone the repository:
 ```bash
-# Install dependencies
-$ yarn install
+git clone <repository-url>
+cd smartspec_be
 ```
 
-## Running the Application
-
+2. Install dependencies:
 ```bash
-# Development mode
-$ yarn run start:dev
-
-# Production mode
-$ yarn run start:prod
+yarn install
 ```
 
-## API Endpoints
+3. Set up the database:
+```bash
+# Create the database
+createdb smartspec
 
-- `POST /api/initiatives/convert` - Convert initiatives to JIRA tasks
-- `GET /api/tasks` - Retrieve all tasks
-- `GET /api/tasks/:id` - Retrieve a specific task
-- `POST /api/tasks` - Create a new task
-- `PUT /api/tasks/:id` - Update a task
-- `DELETE /api/tasks/:id` - Delete a task
-
-## Project Structure
-
+# Run migrations
+yarn migration:run
 ```
-src/
-├── config/           # Configuration files
-├── modules/          # Feature modules
-│   ├── initiatives/  # Initiative processing
-│   ├── tasks/        # Task management
-│   └── vector/       # Vector store operations
-├── shared/           # Shared utilities and types
-└── main.ts          # Application entry point
+
+4. Start the application:
+```bash
+# Development
+yarn start:dev
+
+# Production
+yarn build
+yarn start:prod
 ```
+
+## Docker Deployment
+
+1. Build and start the services:
+```bash
+docker-compose up -d
+```
+
+2. Access the services:
+- Application: http://localhost:3000
+- Grafana: http://localhost:3001
+- Prometheus: http://localhost:9090
+
+## Available Scripts
+
+- `yarn start:dev` - Start the application in development mode
+- `yarn build` - Build the application
+- `yarn start:prod` - Start the application in production mode
+- `yarn migration:generate` - Generate a new migration
+- `yarn migration:run` - Run pending migrations
+- `yarn migration:revert` - Revert the last migration
+- `yarn test` - Run tests
+- `yarn test:e2e` - Run end-to-end tests
+- `yarn lint` - Run linting
+- `yarn format` - Format code
+
+## API Documentation
+
+The API documentation is available at `/api` when running the application. It includes:
+
+- Initiative management endpoints
+- Analytics endpoints
+- Task generation endpoints
+- Metrics endpoints
+
+## Monitoring
+
+### Prometheus Metrics
+
+The application exposes metrics at `/metrics` with the following categories:
+
+- HTTP request metrics
+- Database connection metrics
+- Initiative process metrics
+- Task generation metrics
+- Custom business metrics
+
+### Grafana Dashboards
+
+Two dashboards are available:
+
+1. **Basic Dashboard**
+   - Essential metrics overview
+   - System health monitoring
+   - Basic performance indicators
+
+2. **Detailed Dashboard**
+   - Comprehensive metrics
+   - Trend analysis
+   - Performance breakdowns
+   - Custom visualizations
 
 ## Development
 
-```bash
-# Run tests
-$ yarn run test
+### Project Structure
 
-# Run e2e tests
-$ yarn run test:e2e
-
-# Generate test coverage
-$ yarn run test:cov
+```
+src/
+├── modules/
+│   ├── initiatives/      # Initiative management
+│   ├── metrics/         # Monitoring and metrics
+│   ├── vector/          # Vector storage and search
+│   ├── jira/            # JIRA integration
+│   └── qdrant/          # Qdrant vector database
+├── migrations/          # Database migrations
+├── scripts/            # Utility scripts
+└── config/             # Configuration files
 ```
 
-## Deployment
+### Adding New Features
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+1. Create a new module in `src/modules/`
+2. Add necessary entities and DTOs
+3. Implement services and controllers
+4. Add tests
+5. Update documentation
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Contributing
 
-```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
-```
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## License
 
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+[Add your license information here]
 
 ## Support
 
