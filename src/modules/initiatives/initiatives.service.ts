@@ -7,6 +7,7 @@ import { StructuredOutputParser } from '@langchain/core/output_parsers';
 import { z } from 'zod';
 import { JiraTask, JiraTaskSchema } from './initiatives.schema';
 import { HumanMessage } from '@langchain/core/messages';
+import { DataLoader } from '../vector/data-loader';
 
 interface TaskMetadata {
   initiative: string;
@@ -22,6 +23,7 @@ export class InitiativesService {
   constructor(
     private readonly configService: ConfigService,
     private readonly vectorService: VectorService,
+    private readonly dataLoader: DataLoader,
   ) {
     this.openai = new ChatOpenAI({
       openAIApiKey: this.configService.get<string>('openai.apiKey'),
@@ -42,11 +44,35 @@ export class InitiativesService {
     initiative: string,
   ): Promise<{ tasks: JiraTask[]; metadata: TaskMetadata }> {
     try {
+      // Search for similar historical initiatives
+      const similarInitiatives = await this.dataLoader.searchSimilarInitiatives(
+        initiative,
+        3,
+      );
+
+      // Format historical context
+      const historicalContext = similarInitiatives
+        .map((result) => {
+          const init = result.initiative;
+          if (!init) return null;
+          return `Similar Initiative: ${init.title}
+Description: ${init.description}
+Category: ${init.category || 'N/A'}
+Priority: ${init.priority || 'N/A'}
+Status: ${init.status || 'N/A'}
+Similarity Score: ${result.score.toFixed(2)}`;
+        })
+        .filter((context): context is string => context !== null)
+        .join('\n\n');
+
       // Create a prompt template for task conversion
       const promptTemplate = PromptTemplate.fromTemplate(`
         You are an expert project manager and technical lead. Your task is to break down the following project initiative into well-structured JIRA tasks.
         
         Initiative: {initiative}
+        
+        Here are some similar historical initiatives for context:
+        {historical_context}
         
         Guidelines:
         1. Break down the initiative into logical, manageable tasks
@@ -55,6 +81,7 @@ export class InitiativesService {
         4. Set realistic priorities
         5. Include subtasks where necessary
         6. Use clear, concise language
+        7. Consider patterns from similar historical initiatives when appropriate
         
         {format_instructions}
       `);
@@ -62,6 +89,8 @@ export class InitiativesService {
       // Format the prompt with the initiative and parser instructions
       const formattedPrompt = await promptTemplate.format({
         initiative,
+        historical_context:
+          historicalContext || 'No similar historical initiatives found.',
         format_instructions: this.taskParser.getFormatInstructions(),
       });
 
