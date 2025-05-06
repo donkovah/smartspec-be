@@ -1,26 +1,3 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
 # Smartspec Backend
 
 A powerful backend service for managing initiatives, tasks, and analytics with AI-powered task generation and monitoring capabilities.
@@ -28,12 +5,14 @@ A powerful backend service for managing initiatives, tasks, and analytics with A
 ## Features
 
 - **Initiative Management**
+
   - Create and manage initiatives with detailed tracking
   - AI-powered task generation and suggestions
   - Revision history and change tracking
   - Status management and workflow automation
 
 - **Analytics & Monitoring**
+
   - Real-time metrics collection with Prometheus
   - Comprehensive dashboards with Grafana
   - Custom metrics for:
@@ -44,6 +23,7 @@ A powerful backend service for managing initiatives, tasks, and analytics with A
     - Revision tracking
 
 - **Database & Storage**
+
   - PostgreSQL for persistent storage
   - TypeORM for database management
   - Automated migrations
@@ -90,17 +70,20 @@ NODE_ENV=development
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd smartspec_be
 ```
 
 2. Install dependencies:
+
 ```bash
 yarn install
 ```
 
 3. Set up the database:
+
 ```bash
 # Create the database
 createdb smartspec
@@ -110,6 +93,7 @@ yarn migration:run
 ```
 
 4. Start the application:
+
 ```bash
 # Development
 yarn start:dev
@@ -122,11 +106,13 @@ yarn start:prod
 ## Docker Deployment
 
 1. Build and start the services:
+
 ```bash
 docker-compose up -d
 ```
 
 2. Access the services:
+
 - Application: http://localhost:3000
 - Grafana: http://localhost:3001
 - Prometheus: http://localhost:9090
@@ -170,6 +156,7 @@ The application exposes metrics at `/metrics` with the following categories:
 Two dashboards are available:
 
 1. **Basic Dashboard**
+
    - Essential metrics overview
    - System health monitoring
    - Basic performance indicators
@@ -213,21 +200,15 @@ src/
 4. Push to the branch
 5. Create a Pull Request
 
-## License
-
-[Add your license information here]
-
 ## Support
 
 Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
 
 ## Stay in touch
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Author - [Oluwasegun Kesington](https://twitter.com/donkovah)
+- Instagram - [@donkovah](https://www.instagram.com/donkovah/)
 
 ## License
 
 This project is licensed under the MIT License.
-
